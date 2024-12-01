@@ -21,10 +21,12 @@ class SparqlConnection:
         self.sparql.setReturnFormat(JSON)
         result = self.sparql.query().convert()
         result = result["results"]["bindings"]
+        result = list(map(lambda x: {k: v["value"] for k, v in x.items()}, result))
+        return result
 
-        return map(lambda x: {k: v["value"] for k, v in x.items()}, result)
 
 connection = SparqlConnection()
+
 
 def find_closest_stations(longitude, latitude):
     query = f'''
@@ -47,6 +49,7 @@ def find_closest_stations(longitude, latitude):
     results = connection.query(query)
     return results
 
+
 def find_train_route(lon1, lat1, lon2, lat2):
     from_station = find_closest_stations(lon1, lat1)[0]
     to_station = find_closest_stations(lon2, lat2)[0]
@@ -62,3 +65,22 @@ def find_train_route(lon1, lat1, lon2, lat2):
 
     results = connection.query(query)
     return results
+
+
+def get_routes_between_two_places(lon1, lat1, lon2, lat2):
+    query = f"""
+        SELECT ?route ?from ?to WHERE {{
+            ?route osmkey:route "train" ;
+                   osmkey:from ?from ;
+                   osmkey:to ?to ;
+                   geo:hasGeometry/geo:asWKT ?location .
+    
+            FILTER (regex(?location, "{lat1:.2f}[0-9]* {lon1:.2f}[0-9]*"))
+            FILTER (regex(?location, "{lat2:.2f}[0-9]* {lon2:.2f}[0-9]*"))
+    }}
+        LIMIT 10
+    """
+    results = connection.query(query)
+    return results
+
+

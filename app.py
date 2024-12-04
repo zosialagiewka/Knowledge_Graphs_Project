@@ -22,7 +22,7 @@ def handle_map_click(lat, lon):
 
 c1, c2 = st.columns(2)
 with c1:
-    st.write("### Add Points Manually")
+    st.write("### Add points manually")
     col1, col2 = st.columns(2)
     with col1:
         lat = st.number_input("Latitude", value=0.0, format="%.6f")
@@ -30,17 +30,17 @@ with c1:
     if st.button("Add Point"):
         handle_map_click(lat, lon)
 
-    if st.button("Clear Selected Points"):
+    if st.button("Clear selected points"):
         st.session_state.selected_points = []
 
     if st.session_state.selected_points:
-        st.write("### Selected Points")
+        st.write("### Selected points")
         for idx, point in enumerate(st.session_state.selected_points):
             st.write(f"Point {idx + 1}: Latitude {point['lat']}, Longitude {point['lon']}")
 
 with c2:
-    st.write("### Map View")
-    m = folium.Map(location=[52.22, 21.0], zoom_start=10)
+    st.write("### Map view")
+    m = folium.Map(location=[52.228, 21.0], zoom_start=14)
     for point in st.session_state.selected_points:
         folium.Marker([point['lat'], point['lon']], tooltip="Selected Point").add_to(m)
 
@@ -58,12 +58,25 @@ if len(st.session_state.selected_points) == 2:
     lat1, lon1 = st.session_state.selected_points[0]["lat"], st.session_state.selected_points[0]["lon"]
     lat2, lon2 = st.session_state.selected_points[1]["lat"], st.session_state.selected_points[1]["lon"]
 
-    st.write("### Train Routes")
+    st.write("### Train routes")
     try:
         # train_routes = find_train_route(lat1, lon1, lat2, lon2)
         train_routes = get_routes_between_two_places(lat1, lon1, lat2, lon2)
         if train_routes:
             st.write(train_routes)
+
+            from_station_name = train_routes[0]['from']
+            to_station_name = train_routes[0]['to']
+
+            st.write(f"### Station details for {from_station_name}")
+            from_station_details = get_station_details(from_station_name)
+            if from_station_details:
+                st.write(from_station_details)
+
+            st.write(f"### Station details for {to_station_name}")
+            to_station_details = get_station_details(to_station_name)
+            if to_station_details:
+                st.write(to_station_details)
         else:
             st.write("No train routes found between the selected points.")
     except Exception as e:

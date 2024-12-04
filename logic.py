@@ -25,6 +25,22 @@ class SparqlConnection:
         return result
 
 
+class WikidataConnection:
+    def __init__(self):
+        self.ENDPOINT_URL = "https://query.wikidata.org/sparql"
+        self.sparql = SPARQLWrapper(self.ENDPOINT_URL)
+
+    def query(self, q):
+        self.sparql.setQuery(q)
+        self.sparql.setReturnFormat(JSON)
+        result = self.sparql.query().convert()
+        result = result["results"]["bindings"]
+        result = [{k: v.get("value", "") for k, v in item.items()} for item in result]
+        return result
+
+
+wikidata_connection = WikidataConnection()
+
 connection = SparqlConnection()
 
 
@@ -84,3 +100,19 @@ def get_routes_between_two_places(lon1, lat1, lon2, lat2):
     return results
 
 
+def get_station_details(station_name):
+    query = f'''
+        SELECT DISTINCT ?station ?street_address ?coordinate_location ?adjacent_station ?official_website ?date_of_official_opening
+        WHERE {{
+          ?station rdfs:label ?stationLabel;
+            wdt:P31 wd:Q55488.
+          FILTER (CONTAINS(LCASE(?stationLabel), LCASE("{station_name}")))
+          OPTIONAL {{ ?station wdt:P6375 ?street_address. }}
+          OPTIONAL {{ ?station wdt:P625 ?coordinate_location. }}
+          OPTIONAL {{ ?station wdt:P856 ?official_website. }}
+          OPTIONAL {{ ?station wdt:P1619 ?date_of_official_opening. }}
+        }}
+        LIMIT 50
+    '''
+    results = wikidata_connection.query(query)
+    return results

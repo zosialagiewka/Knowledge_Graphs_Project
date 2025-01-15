@@ -1,6 +1,5 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-
 class SparqlConnection:
     def __init__(self):
         self.ENDPOINT_URL = "https://qlever.cs.uni-freiburg.de/api/osm-planet"
@@ -14,6 +13,7 @@ class SparqlConnection:
             PREFIX osm2rdfmember: <https://osm2rdf.cs.uni-freiburg.de/rdf/member#>
             PREFIX osmrel: <https://www.openstreetmap.org/relation/>
             PREFIX osmway: <https://www.openstreetmap.org/way/>
+            PREFIX ogc: <http://www.opengis.net/rdf#>     
         '''
 
     def query(self, q):
@@ -116,3 +116,57 @@ def get_station_details(station_name):
     '''
     results = wikidata_connection.query(query)
     return results
+
+
+####################################
+
+
+def find_routes_near_point(longitude, latitude, radius=5):
+    query = f'''
+        SELECT ?route ?routeName ?stationGeometry ?stationName ?distance WHERE {{
+            BIND ("POINT({longitude} {latitude})"^^geo:wktLiteral AS ?referencePoint)
+
+            ?station osmkey:railway "stop" ;
+                     osmkey:name ?stationName ;
+                     geo:hasGeometry/geo:asWKT ?stationGeometry .
+            BIND (geof:distance(?referencePoint, ?stationGeometry) AS ?distance)
+            FILTER (?distance <= {radius})
+
+            ?route ogc:sfContains ?station ;
+                   osmkey:route ?routeType ;
+                   osmkey:name ?routeName ;
+            FILTER (?routeType IN ("train", "railway"))
+        }}
+        ORDER BY ?distance
+    '''
+    results = connection.query(query)
+
+    return results
+
+
+def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
+    routes_place_a = find_routes_near_point(lon1, lat1, radius)
+    routes_place_b = find_routes_near_point(lon2, lat2, radius)
+
+    routes_a_ids = set(route["route"] for route in routes_place_a)
+    routes_b_ids = set(route["route"] for route in routes_place_b)
+
+    common_routes = routes_a_ids & routes_b_ids
+
+    common_routes_with_stations = []
+    for route in common_routes:
+        stations_a = [r for r in routes_place_a if r["route"] == route]
+        stations_b = [r for r in routes_place_b if r["route"] == route]
+        for station_a in stations_a:
+            for station_b in stations_b:
+                total_distance = float(station_a["distance"]) + float(station_b["distance"])
+                common_routes_with_stations.append({
+                    "route": route,
+                    "route_name": station_a["routeName"],
+                    "start_station": station_a["stationName"],
+                    "end_station": station_b["stationName"],
+                    "total_distance": total_distance
+                })
+
+    return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
+

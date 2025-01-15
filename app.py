@@ -58,28 +58,23 @@ if len(st.session_state.selected_points) == 2:
     lat1, lon1 = st.session_state.selected_points[0]["lat"], st.session_state.selected_points[0]["lon"]
     lat2, lon2 = st.session_state.selected_points[1]["lat"], st.session_state.selected_points[1]["lon"]
 
-    st.write("### Train routes")
     try:
-        # train_routes = find_train_route(lat1, lon1, lat2, lon2)
-        train_routes = get_routes_between_two_places(lat1, lon1, lat2, lon2)
-        if train_routes:
-            st.write(train_routes)
+        common_routes = find_common_routes(lat1, lon1, lat2, lon2)
 
-            from_station_name = train_routes[0]['from']
-            to_station_name = train_routes[0]['to']
+        if common_routes:
+            closest_route = common_routes[0]
+            st.write("### Closest Route")
+            st.write(f"Route: {closest_route['route_name']}")
+            st.write(f"From: {closest_route['start_station']} to {closest_route['end_station']}")
+            st.write(f"Total distance to stations: {closest_route['total_distance']} km")
 
-            st.write(f"### Station details for {from_station_name}")
-            from_station_details = get_station_details(from_station_name)
-            if from_station_details:
-                st.write(from_station_details)
-
-            st.write(f"### Station details for {to_station_name}")
-            to_station_details = get_station_details(to_station_name)
-            if to_station_details:
-                st.write(to_station_details)
+            st.write("### All direct train routes found")
+            st.write(pd.DataFrame(common_routes))
         else:
-            st.write("No train routes found between the selected points.")
+            st.write("No routes found between the selected points.")
+
     except Exception as e:
-        st.error(f"An error occurred while fetching train routes: {e}")
+        st.error(f"An error occurred: {e}")
+
 else:
     st.info("Please select or add coordinates for two points to find a train route.")

@@ -48,10 +48,31 @@ def process_results(sparql_results):
             lon, lat = float(coords[0]), float(coords[1])
         else:
             lon, lat = None, None
-        data.append([osm_id, location, reference_point, float(distance), lat, lon, amenity, name])
-    return pd.DataFrame(data,
-                        columns=["OSM ID", "Location", "Reference Point", "Distance (km)", "Latitude", "Longitude",
-                                 "Amenity", "Name"])
+        data.append(
+            [
+                osm_id,
+                location,
+                reference_point,
+                float(distance),
+                lat,
+                lon,
+                amenity,
+                name,
+            ]
+        )
+    return pd.DataFrame(
+        data,
+        columns=[
+            "OSM ID",
+            "Location",
+            "Reference Point",
+            "Distance (km)",
+            "Latitude",
+            "Longitude",
+            "Amenity",
+            "Name",
+        ],
+    )
 
 
 st.title("Nearby Amenities Query")
@@ -59,8 +80,18 @@ st.title("Nearby Amenities Query")
 reference_point = "POINT(21.017532 52.237049)"
 st.write(f"Using hardcoded location: {reference_point}")
 
-available_amenities = ["hotel", "post_box", "restaurant", "hospital", "ice_cream", "cafe", "taxi"]
-selected_amenities = st.multiselect("Select amenity types to display", available_amenities, default=available_amenities)
+available_amenities = [
+    "hotel",
+    "post_box",
+    "restaurant",
+    "hospital",
+    "ice_cream",
+    "cafe",
+    "taxi",
+]
+selected_amenities = st.multiselect(
+    "Select amenity types to display", available_amenities, default=available_amenities
+)
 
 
 distance_filter = st.slider(
@@ -68,19 +99,29 @@ distance_filter = st.slider(
     min_value=0.25,
     max_value=10.0,
     value=2.0,
-    step=0.25
+    step=0.25,
 )
 st.write(f"Filtering amenities within {distance_filter} km.")
 
-if "query_results" not in st.session_state or st.session_state.distance_filter != distance_filter:
+if (
+    "query_results" not in st.session_state
+    or st.session_state.distance_filter != distance_filter
+):
     with st.spinner("Querying data..."):
-        sparql_results = query_sparql(reference_point, selected_amenities, distance_filter)
+        sparql_results = query_sparql(
+            reference_point, selected_amenities, distance_filter
+        )
         st.session_state.query_results = sparql_results
-        st.session_state.distance_filter = distance_filter  # Store the current distance filter
+        st.session_state.distance_filter = (
+            distance_filter  # Store the current distance filter
+        )
 
 if selected_amenities:
-    filtered_results = [result for result in st.session_state.query_results if
-                        result['amenity']['value'] in selected_amenities]
+    filtered_results = [
+        result
+        for result in st.session_state.query_results
+        if result["amenity"]["value"] in selected_amenities
+    ]
     if filtered_results:
         df = process_results(filtered_results)
         st.success("Query successful!")
@@ -107,10 +148,12 @@ if selected_amenities:
                     fill=True,
                     fill_color=color,
                     fill_opacity=0.7,
-                    popup=(f"<b>Amenity:</b> {row['Amenity']}<br>"
-                           f"<b>Name:</b> {row['Name']}<br>"
-                           f"<b>OSM ID:</b> {row['OSM ID']}<br>"
-                           f"<b>Distance:</b> {row['Distance (km)']} km"),
+                    popup=(
+                        f"<b>Amenity:</b> {row['Amenity']}<br>"
+                        f"<b>Name:</b> {row['Name']}<br>"
+                        f"<b>OSM ID:</b> {row['OSM ID']}<br>"
+                        f"<b>Distance:</b> {row['Distance (km)']} km"
+                    ),
                 ).add_to(m)
 
         st_folium(m, width=700, height=500)

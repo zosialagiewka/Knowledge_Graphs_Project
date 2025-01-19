@@ -175,22 +175,27 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                     }
                 )
 
-    if len(common_routes_with_stations) == 0:
-        possible_routes_with_change = []
-        for route_a in routes_a_ids:
-            for route_b in routes_b_ids:
-                intersections = get_intersections(route_a, route_b)
-                if len(intersections) > 0:
-                    possible_routes_with_change = (
-                        route_a,
-                        route_b,
-                        intersections[0]["station1"],
-                    )
-                    break
+    return (
+        routes_a_ids,
+        routes_b_ids,
+        sorted(common_routes_with_stations, key=lambda x: x["total_distance"]),
+    )
 
-        print(possible_routes_with_change)
 
-    return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
+def find_routes_with_change(routes_a_ids, routes_b_ids):
+    possible_routes_with_change = None
+    for route_a in routes_a_ids:
+        for route_b in routes_b_ids:
+            intersections = get_intersections(route_a, route_b)
+            if len(intersections) > 0:
+                possible_routes_with_change = (
+                    route_a,
+                    route_b,
+                    intersections[0]["station1"],
+                )
+                break
+
+    return possible_routes_with_change
 
 
 def get_intersections(route1, route2):

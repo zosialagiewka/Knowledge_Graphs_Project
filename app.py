@@ -19,6 +19,12 @@ if "lines" not in st.session_state:
 if "endpoints" not in st.session_state:
     st.session_state.endpoints = []
 
+if "ready" not in st.session_state:
+    st.session_state.ready = False
+
+if "routes" not in st.session_state:
+    st.session_state.routes = None
+
 
 def handle_map_click(lat, lon):
     if len(st.session_state.selected_points) < 2:
@@ -42,6 +48,8 @@ with c1:
         st.session_state.selected_points = []
         st.session_state.lines = []
         st.session_state.endpoints = []
+        st.session_state.ready = False
+        st.session_state.routes = None
 
     if st.session_state.selected_points:
         st.write("### Selected points")
@@ -81,7 +89,7 @@ if map_data and map_data.get("last_clicked") is not None:
     if {"lat": lat, "lon": lon} not in st.session_state.selected_points:
         handle_map_click(lat, lon)
 
-if len(st.session_state.selected_points) == 2:
+if len(st.session_state.selected_points) == 2 and not st.session_state.ready:
     lat1, lon1 = (
         st.session_state.selected_points[0]["lat"],
         st.session_state.selected_points[0]["lon"],
@@ -92,12 +100,13 @@ if len(st.session_state.selected_points) == 2:
     )
 
     try:
-        common_routes = find_common_routes(lat1, lon1, lat2, lon2)
+        routes_a_ids, routes_b_ids, common_routes = find_common_routes(
+            lat1, lon1, lat2, lon2
+        )
+        st.session_state.ready = True
 
         if common_routes:
             closest_route = common_routes[0]
-            st.write("### Closest Route")
-
             geometry_wkt = get_route_geometry(closest_route["route"])
             geometry = wkt.loads(geometry_wkt)
 
@@ -128,21 +137,28 @@ if len(st.session_state.selected_points) == 2:
                     )
                 )
 
-            st.write(f"Route: {closest_route['route_name']}")
-            st.write(
-                f"From: {closest_route['start_station']} to {closest_route['end_station']}"
-            )
-            st.write(
-                f"Total distance to stations: {closest_route['total_distance']} km"
-            )
-
-            st.write("### All direct train routes found")
-            st.write(pd.DataFrame(common_routes))
+            st.session_state.routes = common_routes
+            st.rerun()
         else:
-            st.write("No routes found between the selected points.")
+            find_routes_with_change(routes_a_ids, routes_b_ids)
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
-else:
-    st.info("Please select or add coordinates for two points to find a train route.")
+
+if st.session_state.ready:
+    st.write("### Closest Route")
+
+    if st.session_state.routes is not None:
+        closest_route = st.session_state.routes[0]
+
+        st.write(f"Route: {closest_route['route_name']}")
+        st.write(
+            f"From: {closest_route['start_station']} to {closest_route['end_station']}"
+        )
+        st.write(f"Total distance to stations: {closest_route['total_distance']} km")
+
+        st.write("### All direct train routes found")
+        st.write(pd.DataFrame(st.session_state.routes))
+    else:
+        st.write("No routes found between the selected points.")

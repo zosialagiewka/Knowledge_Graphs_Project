@@ -25,6 +25,9 @@ if "ready" not in st.session_state:
 if "routes" not in st.session_state:
     st.session_state.routes = None
 
+if "route_with_change" not in st.session_state:
+    st.session_state.route_with_change = None
+
 
 def handle_map_click(lat, lon):
     if len(st.session_state.selected_points) < 2:
@@ -50,6 +53,7 @@ with c1:
         st.session_state.endpoints = []
         st.session_state.ready = False
         st.session_state.routes = None
+        st.session_state.route_with_change = None
 
     if st.session_state.selected_points:
         st.write("### Selected points")
@@ -140,7 +144,52 @@ if len(st.session_state.selected_points) == 2 and not st.session_state.ready:
             st.session_state.routes = common_routes
             st.rerun()
         else:
-            find_routes_with_change(routes_a_ids, routes_b_ids)
+            possible_routes = find_routes_with_change(lat1, lon1, lat2, lon2)
+            if len(possible_routes) > 0:
+                st.session_state.route_with_change = possible_routes
+                route_a, route_b, change_station, station_a_name, station_b_name, station_a_geometry, station_b_geometry = possible_routes[0]
+                geometry_route_a = get_route_geometry(route_a)
+                geometry_route_b = get_route_geometry(route_b)
+
+                for geometry_wkt in [geometry_route_a, geometry_route_b]:
+                    geometry = wkt.loads(geometry_wkt)
+                    if geometry.geom_type == "GeometryCollection":
+                        for geom in geometry.geoms:
+                            if geom.geom_type == "LineString":
+                                coordinates = [(point[1], point[0]) for point in geom.coords]
+                                st.session_state.lines.append(coordinates)
+                change_station_geometry = get_route_geometry(change_station)
+                change_station_geometry = wkt.loads(change_station_geometry)
+
+                if change_station_geometry.geom_type == "Point":
+                    st.session_state.endpoints.append(
+                        (
+                            change_station_geometry.y,
+                            change_station_geometry.x,
+                            "Change here",
+                        )
+                    )
+                start_station_geometry = wkt.loads(station_a_geometry)
+                end_station_geometry = wkt.loads(station_b_geometry)
+
+                if start_station_geometry.geom_type == "Point":
+                    st.session_state.endpoints.append(
+                        (
+                            start_station_geometry.y,
+                            start_station_geometry.x,
+                            station_a_name,
+                        )
+                    )
+
+                if end_station_geometry.geom_type == "Point":
+                    st.session_state.endpoints.append(
+                        (
+                            end_station_geometry.y,
+                            end_station_geometry.x,
+                            station_b_name,
+                        )
+                    )
+            st.rerun()
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
@@ -160,5 +209,10 @@ if st.session_state.ready:
 
         st.write("### All direct train routes found")
         st.write(pd.DataFrame(st.session_state.routes))
+
+    elif st.session_state.route_with_change:
+        st.write(pd.DataFrame(st.session_state.route_with_change))
+
     else:
+
         st.write("No routes found between the selected points.")

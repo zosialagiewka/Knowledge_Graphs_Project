@@ -67,56 +67,8 @@ def find_closest_stations(longitude, latitude):
     return results
 
 
-def find_train_route(lon1, lat1, lon2, lat2):
-    from_station = find_closest_stations(lon1, lat1)[0]
-    to_station = find_closest_stations(lon2, lat2)[0]
-
-    query = f"""
-        SELECT ?route ?from ?to WHERE {{
-        ?route osmkey:route "train" ;
-            osmkey:from {from_station["name"]} ;
-            osmkey:to {to_station["name"]} .  
-        }}
-        LIMIT 1
-    """
-
-    results = connection.query(query)
-    return results
 
 
-def get_routes_between_two_places(lon1, lat1, lon2, lat2):
-    query = f"""
-        SELECT ?route ?from ?to WHERE {{
-            ?route osmkey:route "train" ;
-                   osmkey:from ?from ;
-                   osmkey:to ?to ;
-                   geo:hasGeometry/geo:asWKT ?location .
-    
-            FILTER (regex(?location, "{lat1:.2f}[0-9]* {lon1:.2f}[0-9]*"))
-            FILTER (regex(?location, "{lat2:.2f}[0-9]* {lon2:.2f}[0-9]*"))
-    }}
-        LIMIT 10
-    """
-    results = connection.query(query)
-    return results
-
-
-def get_station_details(station_name):
-    query = f"""
-        SELECT DISTINCT ?station ?street_address ?coordinate_location ?adjacent_station ?official_website ?date_of_official_opening
-        WHERE {{
-          ?station rdfs:label ?stationLabel;
-            wdt:P31 wd:Q55488.
-          FILTER (CONTAINS(LCASE(?stationLabel), LCASE("{station_name}")))
-          OPTIONAL {{ ?station wdt:P6375 ?street_address. }}
-          OPTIONAL {{ ?station wdt:P625 ?coordinate_location. }}
-          OPTIONAL {{ ?station wdt:P856 ?official_website. }}
-          OPTIONAL {{ ?station wdt:P1619 ?date_of_official_opening. }}
-        }}
-        LIMIT 50
-    """
-    results = wikidata_connection.query(query)
-    return results
 
 
 ####################################
@@ -182,18 +134,31 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
     )
 
 
-def find_routes_with_change(routes_a_ids, routes_b_ids):
-    possible_routes_with_change = None
+def find_routes_with_change(lat1, lon1, lat2, lon2, radius=5):
+    routes_place_a = find_routes_near_point(lon1, lat1, radius)
+    routes_place_b = find_routes_near_point(lon2, lat2, radius)
+
+    routes_a_ids = list(route for route in routes_place_a)
+    routes_b_ids = list(route for route in routes_place_b)
+
+    possible_routes_with_change = []
     for route_a in routes_a_ids:
         for route_b in routes_b_ids:
-            intersections = get_intersections(route_a, route_b)
+            intersections = get_intersections(route_a["route"], route_b["route"])
             if len(intersections) > 0:
-                possible_routes_with_change = (
-                    route_a,
-                    route_b,
+                print(route_a)
+                print(route_b)
+                possible_routes_with_change.append((
+                    route_a["route"],
+                    route_b["route"],
                     intersections[0]["station1"],
-                )
-                break
+                    route_a["stationName"],
+                    route_b["stationName"],
+                    route_a["stationGeometry"],
+                    route_b["stationGeometry"],
+                ))
+                if len(possible_routes_with_change) >= 2:
+                    return possible_routes_with_change
 
     return possible_routes_with_change
 

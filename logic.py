@@ -1,6 +1,5 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-
 class SparqlConnection:
     def __init__(self):
         self.ENDPOINT_URL = "https://qlever.cs.uni-freiburg.de/api/osm-planet"
@@ -45,35 +44,6 @@ wikidata_connection = WikidataConnection()
 connection = SparqlConnection()
 
 
-def find_closest_stations(longitude, latitude):
-    query = f"""
-        SELECT ?station ?stationGeometry ?name ?distance WHERE {{
-            BIND("POINT({latitude} {longitude})"^^geo:wktLiteral AS ?referencePoint)
-            
-            ?station rdf:type osm:node ;
-                    osmkey:railway "station" ;
-                    osmkey:train "yes" ;
-                    osmkey:name ?name ;
-                    geo:hasGeometry/geo:asWKT ?stationGeometry .
-                    
-            BIND(geof:distance(?referencePoint, ?stationGeometry) AS ?distance)
-            FILTER(?distance <= 5)
-        }}
-        ORDER BY ?distance
-    """
-
-    # "station", "stationGeometry", "name", "distance"
-    results = connection.query(query)
-    return results
-
-
-
-
-
-
-####################################
-
-
 def find_routes_near_point(longitude, latitude, radius=5):
     query = f"""
         SELECT ?route ?routeName ?stationGeometry ?stationName ?distance WHERE {{
@@ -112,9 +82,6 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
         stations_b = [r for r in routes_place_b if r["route"] == route]
         for station_a in stations_a:
             for station_b in stations_b:
-                total_distance = float(station_a["distance"]) + float(
-                    station_b["distance"]
-                )
                 common_routes_with_stations.append(
                     {
                         "route": route,
@@ -123,15 +90,11 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                         "start_station_geometry": station_a["stationGeometry"],
                         "end_station": station_b["stationName"],
                         "end_station_geometry": station_b["stationGeometry"],
-                        "total_distance": total_distance,
+                        "total_distance": float(station_a["distance"]) + float(station_b["distance"])
                     }
                 )
 
-    return (
-        routes_a_ids,
-        routes_b_ids,
-        sorted(common_routes_with_stations, key=lambda x: x["total_distance"]),
-    )
+    return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
 
 
 def find_routes_with_change(lat1, lon1, lat2, lon2, radius=5):

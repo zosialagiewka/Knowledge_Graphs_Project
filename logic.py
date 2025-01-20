@@ -1,5 +1,6 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 
+
 class SparqlConnection:
     def __init__(self):
         self.ENDPOINT_URL = "https://qlever.cs.uni-freiburg.de/api/osm-planet"
@@ -46,7 +47,7 @@ connection = SparqlConnection()
 
 def find_routes_near_point(longitude, latitude, radius=5):
     query = f"""
-        SELECT ?route ?routeName ?stationGeometry ?stationName ?distance WHERE {{
+        SELECT ?route ?routeName ?stationGeometry ?station ?stationName ?distance WHERE {{
             BIND ("POINT({longitude} {latitude})"^^geo:wktLiteral AS ?referencePoint)
 
             ?station osmkey:railway "stop" ;
@@ -90,7 +91,7 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                         "start_station_geometry": station_a["stationGeometry"],
                         "end_station": station_b["stationName"],
                         "end_station_geometry": station_b["stationGeometry"],
-                        "total_distance": float(station_a["distance"]) + float(station_b["distance"])
+                        "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2)
                     }
                 )
 
@@ -109,8 +110,6 @@ def find_routes_with_change(lat1, lon1, lat2, lon2, radius=5):
         for route_b in routes_b_ids:
             intersections = get_intersections(route_a["route"], route_b["route"])
             if len(intersections) > 0:
-                print(route_a)
-                print(route_b)
                 possible_routes_with_change.append((
                     route_a["route"],
                     route_b["route"],
@@ -154,3 +153,22 @@ def get_route_geometry(route):
     results = connection.query(query)
 
     return results[0]["railGeometry"]
+
+
+def get_unique_routes(routes):
+    unique_routes = {}
+    for route in routes:
+        key = (route["start_station"], route["end_station"])
+        if key not in unique_routes:
+            unique_routes[key] = route
+    return list(unique_routes.values())
+
+
+def get_unique_routes_by_name(routes):
+    unique_routes = {}
+    for route in routes:
+        key = route["route_name"]
+        if key not in unique_routes:
+            unique_routes[key] = route
+    return list(unique_routes.values())
+

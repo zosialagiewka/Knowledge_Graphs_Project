@@ -31,18 +31,30 @@ if "route_with_change" not in st.session_state:
 if "filtered_routes" not in st.session_state:
     st.session_state.filtered_routes = None
 
-if "filtered_routes_with_change" not in st.session_state:
-    st.session_state.filtered_routes_with_change = None
+if "no_results" not in st.session_state:
+    st.session_state.no_results = False
+
 
 if st.session_state.routes:
     st.sidebar.write("### Filtering")
-    max_walking_distance = st.sidebar.slider("Max walking distance (km)", 0.0, 10.0, 5.0, 0.1)
+    st.sidebar.write("#### Maximum walking distance")
+    max_walking_distance = st.sidebar.slider("Distance (km)", 0.0, 10.0, 10.0, 0.1)
+
+    st.sidebar.write("#### Stations")
     start_stations = sorted(set(route["start_station"] for route in (st.session_state.routes or [])))
     end_stations = sorted(set(route["end_station"] for route in (st.session_state.routes or [])))
+    operators = sorted(set(route["operator"] for route in (st.session_state.routes or [])))
 
     start_station_filter = st.sidebar.selectbox("Start station", ['All'] + start_stations)
     end_station_filter = st.sidebar.selectbox("End station", ['All'] + end_stations)
 
+    st.sidebar.write("#### Operators")
+    selected_operators = []
+    for operator in operators:
+        if st.sidebar.checkbox(operator, value=True):
+            selected_operators.append(operator)
+
+    st.sidebar.write("#### Other")
     unique_routes_only = st.sidebar.checkbox("Show only one route per start-end station pair", value=False)
     unique_route_names_only = st.sidebar.checkbox("Show only the option with the closest stations for a given route",
                                                   value=False)
@@ -53,12 +65,24 @@ if st.session_state.routes:
                 route for route in st.session_state.routes
                 if (route['total_distance'] <= max_walking_distance and
                     (start_station_filter == 'All' or start_station_filter == route['start_station']) and
-                    (end_station_filter == 'All' or end_station_filter == route['end_station']))]
+                    (end_station_filter == 'All' or end_station_filter == route['end_station']) and
+                    (route['operator'] in selected_operators))]
+
             if unique_routes_only:
                 filtered_routes = get_unique_routes(filtered_routes)
             if unique_route_names_only:
                 filtered_routes = get_unique_routes_by_name(filtered_routes)
+
+            if not filtered_routes:
+                st.session_state.no_results = True
+            else:
+                st.session_state.no_results = False
+
             st.session_state.filtered_routes = filtered_routes
+
+    if st.sidebar.button("Clear filters"):
+        st.session_state.filtered_routes = None
+        st.session_state.no_results = False
 
 
 def handle_map_click(lat_, lon_):
@@ -86,7 +110,8 @@ if st.sidebar.button("Clear selected points"):
     st.session_state.endpoints = []
     st.session_state.ready = False
     st.session_state.routes = None
-    st.session_state.route_with_change = None
+    st.session_state.no_results = False
+    st.session_state.filtered_routes = None
 
 m = folium.Map(location=[52.228, 21.0], zoom_start=10)
 
@@ -190,8 +215,12 @@ if st.session_state.ready:
         st.write(f"Total distance to stations: {closest_route['total_distance']} km")
 
         st.write("### All direct train routes found")
-        routes_to_display = st.session_state.filtered_routes or st.session_state.routes
-        st.write(pd.DataFrame(routes_to_display)[['route_name', 'start_station', 'end_station', 'total_distance']])
+        if not st.session_state.filtered_routes and st.session_state.no_results:
+            st.write("No results matching the filter criteria were found.")
+        else:
+            routes_to_display = st.session_state.filtered_routes or st.session_state.routes
+            st.write(pd.DataFrame(routes_to_display)[['route_name', 'start_station', 'end_station', 'operator',
+                                                      'total_distance']])
 
     elif st.session_state.route_with_change:
         st.write("### Possible routes with changes")

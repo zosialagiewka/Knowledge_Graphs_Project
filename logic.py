@@ -47,7 +47,7 @@ connection = SparqlConnection()
 
 def find_routes_near_point(longitude, latitude, radius=5):
     query = f"""
-        SELECT ?route ?routeName ?stationGeometry ?station ?stationName ?distance WHERE {{
+        SELECT ?route ?routeName ?stationGeometry ?station ?stationName ?distance ?operator WHERE {{
             BIND ("POINT({longitude} {latitude})"^^geo:wktLiteral AS ?referencePoint)
 
             ?station osmkey:railway "stop" ;
@@ -59,6 +59,7 @@ def find_routes_near_point(longitude, latitude, radius=5):
             ?route ogc:sfContains ?station ;
                    osmkey:route ?routeType ;
                    osmkey:name ?routeName ;
+                   osmkey:operator ?operator ;
             FILTER (?routeType IN ("train", "railway"))
         }}
         ORDER BY ?distance
@@ -83,17 +84,18 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
         stations_b = [r for r in routes_place_b if r["route"] == route]
         for station_a in stations_a:
             for station_b in stations_b:
-                common_routes_with_stations.append(
-                    {
-                        "route": route,
-                        "route_name": station_a["routeName"],
-                        "start_station": station_a["stationName"],
-                        "start_station_geometry": station_a["stationGeometry"],
-                        "end_station": station_b["stationName"],
-                        "end_station_geometry": station_b["stationGeometry"],
-                        "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2)
-                    }
-                )
+                if station_a["stationName"] != station_b["stationName"]:
+                    common_routes_with_stations.append(
+                        {
+                            "route": route,
+                            "route_name": station_a["routeName"],
+                            "start_station": station_a["stationName"],
+                            "start_station_geometry": station_a["stationGeometry"],
+                            "end_station": station_b["stationName"],
+                            "end_station_geometry": station_b["stationGeometry"],
+                            "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2),
+                            "operator": station_a['operator']
+                        })
 
     return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
 

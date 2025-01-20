@@ -35,7 +35,7 @@ if "filtered_routes_with_change" not in st.session_state:
     st.session_state.filtered_routes_with_change = None
 
 if st.session_state.routes:
-    st.sidebar.write("### Filter options")
+    st.sidebar.write("### Filtering")
     max_walking_distance = st.sidebar.slider("Max walking distance (km)", 0.0, 10.0, 5.0, 0.1)
     start_stations = sorted(set(route["start_station"] for route in (st.session_state.routes or [])))
     end_stations = sorted(set(route["end_station"] for route in (st.session_state.routes or [])))
@@ -47,7 +47,7 @@ if st.session_state.routes:
     unique_route_names_only = st.sidebar.checkbox("Show only the option with the closest stations for a given route",
                                                   value=False)
 
-    if st.sidebar.button("Apply filters"):
+    if st.sidebar.button("Filter"):
         if st.session_state.routes is not None:
             filtered_routes = [
                 route for route in st.session_state.routes
@@ -61,9 +61,9 @@ if st.session_state.routes:
             st.session_state.filtered_routes = filtered_routes
 
 
-def handle_map_click(lat, lon):
+def handle_map_click(lat_, lon_):
     if len(st.session_state.selected_points) < 2:
-        st.session_state.selected_points.append({"lat": lat, "lon": lon})
+        st.session_state.selected_points.append({"lat": lat_, "lon": lon_})
         st.rerun()
     else:
         st.warning("You can only select two points. Clear the points to reset.")

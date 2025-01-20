@@ -34,7 +34,6 @@ if "filtered_routes" not in st.session_state:
 if "no_results" not in st.session_state:
     st.session_state.no_results = False
 
-
 if st.session_state.routes:
     st.sidebar.write("### Filtering")
     st.sidebar.write("#### Maximum walking distance")
@@ -171,8 +170,8 @@ if len(st.session_state.selected_points) == 2 and not st.session_state.ready:
             possible_routes = find_routes_with_change(lat1, lon1, lat2, lon2)
             if possible_routes:
                 st.session_state.route_with_change = possible_routes
-                route_a, route_b, change_station, station_a_name, station_b_name, station_a_geometry, station_b_geometry = \
-                    possible_routes[0]
+                (route_a, route_b, _, _, change_station, _, station_a_name, station_b_name, station_a_geometry,
+                 station_b_geometry) = possible_routes[0]
                 geometry_route_a = get_route_geometry(route_a)
                 geometry_route_b = get_route_geometry(route_b)
 
@@ -218,12 +217,27 @@ if st.session_state.ready:
         if not st.session_state.filtered_routes and st.session_state.no_results:
             st.write("No results matching the filter criteria were found.")
         else:
+            column_mapping = {
+                'route_name': 'Route',
+                'start_station': 'Start station',
+                'end_station': 'End station',
+                'operator': 'Operator',
+                'total_distance': 'Walking distance (km)'
+            }
+
             routes_to_display = st.session_state.filtered_routes or st.session_state.routes
             st.write(pd.DataFrame(routes_to_display)[['route_name', 'start_station', 'end_station', 'operator',
-                                                      'total_distance']])
+                                                      'total_distance']].rename(columns=column_mapping))
 
     elif st.session_state.route_with_change:
         st.write("### Possible routes with changes")
-        st.write(pd.DataFrame(st.session_state.route_with_change))
+
+        routes_with_change_df = pd.DataFrame(st.session_state.route_with_change,
+                                             columns=["route_a", "route_b", "First route", "Second route",
+                                                      "change_station", "Change station", "Start station",
+                                                      "End station", "start_station_geometry", "end_station_geometry"])
+
+        st.write(pd.DataFrame(routes_with_change_df)[['First route', 'Second route', 'Start station', 'End station',
+                                                      'Change station']])
     else:
         st.write("No routes found between the selected points.")

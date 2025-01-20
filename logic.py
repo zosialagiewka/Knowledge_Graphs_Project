@@ -115,7 +115,10 @@ def find_routes_with_change(lat1, lon1, lat2, lon2, radius=5):
                 possible_routes_with_change.append((
                     route_a["route"],
                     route_b["route"],
+                    route_a["routeName"],
+                    route_b["routeName"],
                     intersections[0]["station1"],
+                    intersections[0]["stationName"],
                     route_a["stationName"],
                     route_b["stationName"],
                     route_a["stationGeometry"],

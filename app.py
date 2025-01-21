@@ -36,7 +36,6 @@ if "no_results" not in st.session_state:
 if "alternative_lines" not in st.session_state:
     st.session_state.alternative_lines = []
 
-
 if st.session_state.ready:
     st.sidebar.write("### Filtering")
     st.sidebar.write("#### Maximum walking distance")
@@ -70,19 +69,19 @@ if st.session_state.ready:
                 route
                 for route in st.session_state.routes
                 if (
-                    route["total_distance"] <= max_walking_distance
-                    and (
-                        start_station_filter == "All"
-                        or start_station_filter == route["start_station"]
-                    )
-                    and (
-                        end_station_filter == "All"
-                        or end_station_filter == route["end_station"]
-                    )
-                    and (
-                        route.get("operator") in selected_operators
-                        or (other and not route.get("operator"))
-                    )
+                        route["total_distance"] <= max_walking_distance
+                        and (
+                                start_station_filter == "All"
+                                or start_station_filter == route["start_station"]
+                        )
+                        and (
+                                end_station_filter == "All"
+                                or end_station_filter == route["end_station"]
+                        )
+                        and (
+                                route.get("operator") in selected_operators
+                                or (other and not route.get("operator"))
+                        )
                 )
             ]
 
@@ -153,6 +152,13 @@ for line_coords in st.session_state.alternative_lines:
 
 for line_coords in st.session_state.lines:
     folium.PolyLine(line_coords, color="red", weight=3).add_to(m)
+
+if "route_lines" in st.session_state:
+    colors = ['blue', 'green', 'orange']
+    for idx, (route_name, lines) in enumerate(st.session_state.route_lines.items()):
+        color = colors[idx % len(colors)]
+        for line in lines:
+            folium.PolyLine(line, color=color, weight=3, tooltip=f"Route: {route_name}").add_to(m)
 
 if len(st.session_state.selected_points) < 2:
     m.add_child(folium.ClickForMarker(popup=None))
@@ -318,6 +324,28 @@ if st.session_state.ready:
                     ]
                 ].rename(columns=column_mapping)
             )
+
+            if 0 < len(routes_to_display) <= 3:
+                if st.button("Show all routes on the map"):
+                    route_lines = {}
+                    for route in routes_to_display:
+                        geometry_wkt = get_route_geometry(route["route"])
+                        geometry = wkt.loads(geometry_wkt)
+
+                        lines = []
+                        if geometry.geom_type == "GeometryCollection":
+                            for geom in geometry.geoms:
+                                if geom.geom_type == "LineString":
+                                    coordinates = [(point[1], point[0]) for point in geom.coords]
+                                    lines.append(coordinates)
+                        elif geometry.geom_type == "LineString":
+                            coordinates = [(point[1], point[0]) for point in geometry.coords]
+                            lines.append(coordinates)
+
+                        route_lines[route["route_name"]] = lines
+
+                    st.session_state.route_lines = route_lines
+                    st.rerun()
 
     elif st.session_state.route_with_change:
         st.write("### Possible routes with changes")

@@ -92,8 +92,14 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                             "start_station_geometry": station_a["stationGeometry"],
                             "end_station": station_b["stationName"],
                             "end_station_geometry": station_b["stationGeometry"],
-                            "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2),
-                            "operator": station_a.get('operator')})
+                            "total_distance": round(
+                                float(station_a["distance"])
+                                + float(station_b["distance"]),
+                                2,
+                            ),
+                            "operator": station_a.get("operator"),
+                        }
+                    )
 
     return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
 
@@ -110,19 +116,21 @@ def find_routes_with_change(lat1, lon1, lat2, lon2, radius=5):
         for route_b in routes_b_ids:
             intersections = get_intersections(route_a["route"], route_b["route"])
             if len(intersections) > 0:
-                possible_routes_with_change.append((
-                    route_a["route"],
-                    route_b["route"],
-                    route_a["routeName"],
-                    route_b["routeName"],
-                    intersections[0]["station1"],
-                    intersections[0]["stationName"],
-                    route_a["stationName"],
-                    route_b["stationName"],
-                    route_a["stationGeometry"],
-                    route_b["stationGeometry"],
-                ))
-                if len(possible_routes_with_change) >= 2:
+                possible_routes_with_change.append(
+                    {
+                        "route_a": route_a["route"],
+                        "route_b": route_b["route"],
+                        "route_name_a": route_a["routeName"],
+                        "route_name_b": route_b["routeName"],
+                        "change": intersections[0]["station1"],
+                        "change_name": intersections[0]["stationName"],
+                        "station_name_a": route_a["stationName"],
+                        "station_name_b": route_b["stationName"],
+                        "station_geometry_a": route_a["stationGeometry"],
+                        "station_geometry_b": route_b["stationGeometry"],
+                    }
+                )
+                if len(possible_routes_with_change) >= 15:
                     return possible_routes_with_change
 
     return possible_routes_with_change
@@ -174,3 +182,21 @@ def get_unique_routes_by_name(routes):
         if key not in unique_routes:
             unique_routes[key] = route
     return list(unique_routes.values())
+
+
+def get_station_details(station_name):
+    query = f"""
+        SELECT DISTINCT ?station ?street_address ?coordinate_location ?adjacent_station ?official_website ?date_of_official_opening
+        WHERE {{
+          ?station rdfs:label ?stationLabel;
+            wdt:P31 wd:Q55488.
+          FILTER (CONTAINS(LCASE(?stationLabel), LCASE("{station_name}")))
+          OPTIONAL {{ ?station wdt:P6375 ?street_address. }}
+          OPTIONAL {{ ?station wdt:P625 ?coordinate_location. }}
+          OPTIONAL {{ ?station wdt:P856 ?official_website. }}
+          OPTIONAL {{ ?station wdt:P1619 ?date_of_official_opening. }}
+        }}
+        LIMIT 50
+    """
+    results = wikidata_connection.query(query)
+    return results

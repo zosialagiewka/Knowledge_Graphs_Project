@@ -4,7 +4,6 @@ from logic import *
 import folium
 from streamlit_folium import st_folium
 from shapely import wkt
-from shapely.geometry import GeometryCollection
 
 st.set_page_config(page_title="Railway journey planner 🚂", layout="wide")
 
@@ -44,23 +43,11 @@ if st.session_state.ready:
     max_walking_distance = st.sidebar.slider("Distance (km)", 0.0, 10.0, 10.0, 0.1)
 
     st.sidebar.write("#### Stations")
-    start_stations = sorted(
-        set(route["start_station"] for route in (st.session_state.routes or []))
-    )
-    end_stations = sorted(
-        set(route["end_station"] for route in (st.session_state.routes or []))
-    )
-    operators = sorted(
-        set(
-            route["operator"]
-            for route in (st.session_state.routes or [])
-            if route["operator"]
-        )
-    )
+    start_stations = sorted(set(route["start_station"] for route in (st.session_state.routes or [])))
+    end_stations = sorted(set(route["end_station"] for route in (st.session_state.routes or [])))
+    operators = sorted(set(route["operator"] for route in (st.session_state.routes or []) if route["operator"]))
 
-    start_station_filter = st.sidebar.selectbox(
-        "Start station", ["All"] + start_stations
-    )
+    start_station_filter = st.sidebar.selectbox("Start station", ["All"] + start_stations)
     end_station_filter = st.sidebar.selectbox("End station", ["All"] + end_stations)
 
     st.sidebar.write("#### Operators")
@@ -73,12 +60,9 @@ if st.session_state.ready:
     other = st.sidebar.checkbox("Other (no operator)", value=True)
 
     st.sidebar.write("#### Other")
-    unique_routes_only = st.sidebar.checkbox(
-        "Show only one route per start-end station pair", value=False
-    )
-    unique_route_names_only = st.sidebar.checkbox(
-        "Show only the option with the closest stations for a given route", value=False
-    )
+    unique_routes_only = st.sidebar.checkbox("Show only one route per start-end station pair", value=False)
+    unique_route_names_only = st.sidebar.checkbox("Show only the option with the closest stations for a given route",
+                                                  value=False)
 
     if st.sidebar.button("Filter"):
         if st.session_state.routes is not None:
@@ -136,9 +120,7 @@ if st.sidebar.button("Add Point"):
 if st.session_state.selected_points:
     st.sidebar.write("### Selected points")
     for idx, point in enumerate(st.session_state.selected_points):
-        st.sidebar.write(
-            f"Point {idx + 1}:\n\n Latitude {round(point['lat'], 3)}, Longitude {round(point['lon'], 3)}"
-        )
+        st.sidebar.write(f"Point {idx + 1}:\n\n Latitude {round(point['lat'], 3)}, Longitude {round(point['lon'], 3)}")
 
 if st.sidebar.button("Clear selected points"):
     st.session_state.selected_points = []
@@ -220,20 +202,8 @@ if len(st.session_state.selected_points) == 2 and not st.session_state.ready:
                 )
 
             if end_station_geometry.geom_type == "Point":
-                st.session_state.endpoints.append(
-                    (
-                        end_station_geometry.y,
-                        end_station_geometry.x,
-                        closest_route["end_station"],
-                    )
-                )
-
-            common_routes[0]["details_start"] = get_station_details(
-                closest_route["start_station"]
-            )
-            common_routes[0]["details_end"] = get_station_details(
-                closest_route["end_station"]
-            )
+                st.session_state.endpoints.append((end_station_geometry.y, end_station_geometry.x,
+                                                   closest_route["end_station"]))
 
             st.session_state.routes = common_routes
             st.rerun()
@@ -254,28 +224,16 @@ if len(st.session_state.selected_points) == 2 and not st.session_state.ready:
                     geometry_route_a = get_route_geometry(route_a)
                     geometry_route_b = get_route_geometry(route_b)
 
-                    if i == 0:
-                        possible_route["details_start"] = get_station_details(
-                            station_a_name
-                        )
-                        possible_route["details_end"] = get_station_details(
-                            station_b_name
-                        )
-
                     for geometry_wkt in [geometry_route_a, geometry_route_b]:
                         geometry = wkt.loads(geometry_wkt)
                         if geometry.geom_type == "GeometryCollection":
                             for geom in geometry.geoms:
                                 if geom.geom_type == "LineString":
-                                    coordinates = [
-                                        (point[1], point[0]) for point in geom.coords
-                                    ]
+                                    coordinates = [(point[1], point[0]) for point in geom.coords]
                                     if i == 0:
                                         st.session_state.lines.append(coordinates)
                                     else:
-                                        st.session_state.alternative_lines.append(
-                                            coordinates
-                                        )
+                                        st.session_state.alternative_lines.append(coordinates)
 
                     change_station_geometry = get_route_geometry(change_station)
                     change_station_geometry = wkt.loads(change_station_geometry)
@@ -321,10 +279,20 @@ if st.session_state.ready:
 
         st.write("### Recommended route")
         st.write(f"Route: {closest_route['route_name']}")
-        st.write(
-            f"From: {closest_route['start_station']} to {closest_route['end_station']}"
-        )
+        st.write(f"From: {closest_route['start_station']}")
+        st.write(f"To: {closest_route['end_station']}")
         st.write(f"Total distance to stations: {closest_route['total_distance']} km")
+
+        if st.checkbox("Display station details", value=False):
+            st.session_state.routes[0]["details_start"] = get_station_details(closest_route["start_station"])
+            st.session_state.routes[0]["details_end"] = get_station_details(closest_route["end_station"])
+
+            st.write("#### Stations details")
+            st.write("##### Start station details")
+            st.write(pd.DataFrame(closest_route["details_start"])) if closest_route["details_start"] \
+                else "No details found"
+            st.write("##### End station details")
+            st.write(pd.DataFrame(closest_route["details_end"])) if closest_route["details_end"] else "No details found"
 
         st.write("### All direct train routes found")
         if not st.session_state.filtered_routes and st.session_state.no_results:
@@ -338,9 +306,7 @@ if st.session_state.ready:
                 "total_distance": "Walking distance (km)",
             }
 
-            routes_to_display = (
-                st.session_state.filtered_routes or st.session_state.routes
-            )
+            routes_to_display = (st.session_state.filtered_routes or st.session_state.routes)
             st.write(
                 pd.DataFrame(routes_to_display)[
                     [
@@ -352,12 +318,6 @@ if st.session_state.ready:
                     ]
                 ].rename(columns=column_mapping)
             )
-
-        st.write("#### Stations details")
-        st.write("##### Start station details")
-        st.write(pd.DataFrame(closest_route["details_start"]))
-        st.write("##### End station details")
-        st.write(pd.DataFrame(closest_route["details_end"]))
 
     elif st.session_state.route_with_change:
         st.write("### Possible routes with changes")

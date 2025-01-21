@@ -34,7 +34,7 @@ if "filtered_routes" not in st.session_state:
 if "no_results" not in st.session_state:
     st.session_state.no_results = False
 
-if st.session_state.routes:
+if st.session_state.ready:
     st.sidebar.write("### Filtering")
     st.sidebar.write("#### Maximum walking distance")
     max_walking_distance = st.sidebar.slider("Distance (km)", 0.0, 10.0, 10.0, 0.1)
@@ -42,7 +42,7 @@ if st.session_state.routes:
     st.sidebar.write("#### Stations")
     start_stations = sorted(set(route["start_station"] for route in (st.session_state.routes or [])))
     end_stations = sorted(set(route["end_station"] for route in (st.session_state.routes or [])))
-    operators = sorted(set(route["operator"] for route in (st.session_state.routes or [])))
+    operators = sorted(set(route["operator"] for route in (st.session_state.routes or []) if route["operator"]))
 
     start_station_filter = st.sidebar.selectbox("Start station", ['All'] + start_stations)
     end_station_filter = st.sidebar.selectbox("End station", ['All'] + end_stations)
@@ -50,8 +50,11 @@ if st.session_state.routes:
     st.sidebar.write("#### Operators")
     selected_operators = []
     for operator in operators:
-        if st.sidebar.checkbox(operator, value=True):
-            selected_operators.append(operator)
+        if operator:
+            if st.sidebar.checkbox(operator, value=True):
+                selected_operators.append(operator)
+
+    other = st.sidebar.checkbox("Other (no operator)", value=True)
 
     st.sidebar.write("#### Other")
     unique_routes_only = st.sidebar.checkbox("Show only one route per start-end station pair", value=False)
@@ -60,24 +63,24 @@ if st.session_state.routes:
 
     if st.sidebar.button("Filter"):
         if st.session_state.routes is not None:
-            filtered_routes = [
-                route for route in st.session_state.routes
-                if (route['total_distance'] <= max_walking_distance and
-                    (start_station_filter == 'All' or start_station_filter == route['start_station']) and
-                    (end_station_filter == 'All' or end_station_filter == route['end_station']) and
-                    (route['operator'] in selected_operators))]
+            filtered_routes = [route for route in st.session_state.routes
+                               if (route['total_distance'] <= max_walking_distance and
+                                   (start_station_filter == 'All' or start_station_filter == route['start_station']) and
+                                   (end_station_filter == 'All' or end_station_filter == route['end_station']) and
+                                   (route.get('operator') in selected_operators or
+                                    (other and not route.get('operator'))))]
 
-            if unique_routes_only:
-                filtered_routes = get_unique_routes(filtered_routes)
-            if unique_route_names_only:
-                filtered_routes = get_unique_routes_by_name(filtered_routes)
+        if unique_routes_only:
+            filtered_routes = get_unique_routes(filtered_routes)
+        if unique_route_names_only:
+            filtered_routes = get_unique_routes_by_name(filtered_routes)
 
-            if not filtered_routes:
-                st.session_state.no_results = True
-            else:
-                st.session_state.no_results = False
+        if not filtered_routes:
+            st.session_state.no_results = True
+        else:
+            st.session_state.no_results = False
 
-            st.session_state.filtered_routes = filtered_routes
+        st.session_state.filtered_routes = filtered_routes
 
     if st.sidebar.button("Clear filters"):
         st.session_state.filtered_routes = None
@@ -127,7 +130,7 @@ for line_coords in st.session_state.lines:
 if len(st.session_state.selected_points) < 2:
     m.add_child(folium.ClickForMarker(popup=None))
 
-map_data = st_folium(m, width=700, height=500)
+map_data = st_folium(m, width=1000, height=550)
 
 if map_data and map_data.get("last_clicked") is not None:
     lat, lon = map_data["last_clicked"]["lat"], map_data["last_clicked"]["lng"]

@@ -59,13 +59,13 @@ def find_routes_near_point(longitude, latitude, radius=5):
             ?route ogc:sfContains ?station ;
                    osmkey:route ?routeType ;
                    osmkey:name ?routeName ;
-                   osmkey:operator ?operator ;
             FILTER (?routeType IN ("train", "railway"))
+            OPTIONAL {{ ?route osmkey:operator ?operator }}
         }}
         ORDER BY ?distance
     """
-    results = connection.query(query)
 
+    results = connection.query(query)
     return results
 
 
@@ -77,7 +77,6 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
     routes_b_ids = set(route["route"] for route in routes_place_b)
 
     common_routes = routes_a_ids & routes_b_ids
-
     common_routes_with_stations = []
     for route in common_routes:
         stations_a = [r for r in routes_place_a if r["route"] == route]
@@ -94,8 +93,7 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                             "end_station": station_b["stationName"],
                             "end_station_geometry": station_b["stationGeometry"],
                             "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2),
-                            "operator": station_a['operator']
-                        })
+                            "operator": station_a.get('operator')})
 
     return sorted(common_routes_with_stations, key=lambda x: x["total_distance"])
 
@@ -176,4 +174,3 @@ def get_unique_routes_by_name(routes):
         if key not in unique_routes:
             unique_routes[key] = route
     return list(unique_routes.values())
-

@@ -36,7 +36,7 @@ if "no_results" not in st.session_state:
 if "alternative_lines" not in st.session_state:
     st.session_state.alternative_lines = []
 
-if st.session_state.ready:
+if st.session_state.ready and st.session_state.routes is not None:
     st.sidebar.write("### Filtering")
     st.sidebar.write("#### Maximum walking distance")
     max_walking_distance = st.sidebar.slider("Distance (km)", 0.0, 10.0, 10.0, 0.1)
@@ -64,26 +64,25 @@ if st.session_state.ready:
                                                   value=False)
 
     if st.sidebar.button("Filter"):
-        if st.session_state.routes is not None:
-            filtered_routes = [
-                route
-                for route in st.session_state.routes
-                if (
-                        route["total_distance"] <= max_walking_distance
-                        and (
-                                start_station_filter == "All"
-                                or start_station_filter == route["start_station"]
-                        )
-                        and (
-                                end_station_filter == "All"
-                                or end_station_filter == route["end_station"]
-                        )
-                        and (
-                                route.get("operator") in selected_operators
-                                or (other and not route.get("operator"))
-                        )
-                )
-            ]
+        filtered_routes = [
+            route
+            for route in st.session_state.routes
+            if (
+                    route["total_distance"] <= max_walking_distance
+                    and (
+                            start_station_filter == "All"
+                            or start_station_filter == route["start_station"]
+                    )
+                    and (
+                            end_station_filter == "All"
+                            or end_station_filter == route["end_station"]
+                    )
+                    and (
+                            route.get("operator") in selected_operators
+                            or (other and not route.get("operator"))
+                    )
+            )
+        ]
 
         if unique_routes_only:
             filtered_routes = get_unique_routes(filtered_routes)

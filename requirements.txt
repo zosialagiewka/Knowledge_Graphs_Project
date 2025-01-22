@@ -1,6 +1,7 @@
 folium==0.18.0
 pandas==2.0.3
 SPARQLWrapper==2.0.0
-SPARQLWrapper==2.0.0
 streamlit==1.40.2
 streamlit_folium==0.23.2
+shapely==2.0.4
+

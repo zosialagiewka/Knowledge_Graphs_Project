@@ -92,7 +92,11 @@ def find_common_routes(lat1, lon1, lat2, lon2, radius=5):
                             "start_station_geometry": station_a["stationGeometry"],
                             "end_station": station_b["stationName"],
                             "end_station_geometry": station_b["stationGeometry"],
-                            "total_distance": round(float(station_a["distance"]) + float(station_b["distance"]), 2),
+                            "total_distance": round(
+                                float(station_a["distance"])
+                                + float(station_b["distance"]),
+                                2,
+                            ),
                             "operator": station_a.get("operator"),
                         }
                     )
